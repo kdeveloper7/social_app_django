@@ -23,8 +23,10 @@
     <!-- Formulario para crear una nueva publicación -->
     <h2>Create a Post</h2>
     <form id="postForm">
-        <label for="postUsername">Username:</label>
-        <input type="text" id="postUsername" name="postUsername" required><br><br>
+        <label for="postUsername">Select User:</label>
+        <select id="postUsername" name="postUsername" required>
+            <option value="">Select a user</option>
+        </select><br><br>
         <label for="content">Post Content:</label>
         <textarea id="content" name="content" required></textarea><br><br>
         <button type="submit">Create Post</button>
@@ -38,6 +40,27 @@
     <div id="posts"></div>
 
     <script>
+        // Función para cargar los usuarios en el menú desplegable
+        async function loadUsers() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/users/');
+                const users = await response.json();
+                const postUsernameSelect = document.getElementById('postUsername');
+
+                users.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id; // Usamos el ID como valor
+                    option.textContent = user.username; // Muestra el nombre de usuario
+                    postUsernameSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error("Error loading users:", error);
+            }
+        }
+
+        // Cargar usuarios al iniciar la página
+        loadUsers();
+
         // Función para crear un nuevo usuario al enviar el formulario
         document.getElementById('userForm').addEventListener('submit', async function (event) {
             event.preventDefault();
@@ -56,6 +79,9 @@
                 if (response.ok) {
                     alert("User created successfully!");
                     document.getElementById('userForm').reset();
+                    // Recargar los usuarios después de crear uno nuevo
+                    document.getElementById('postUsername').innerHTML = '<option value="">Select a user</option>'; // Resetear el menú
+                    loadUsers(); // Volver a cargar los usuarios
                 } else {
                     alert("Error creating user.");
                 }
@@ -67,21 +93,15 @@
         // Función para crear una nueva publicación al enviar el formulario
         document.getElementById('postForm').addEventListener('submit', async function (event) {
             event.preventDefault();
-            const username = document.getElementById('postUsername').value;
-            const content = document.getElementById('content').value;
+            const userId = document.getElementById('postUsername').value; // Obtener el ID seleccionado del menú
+            const content = document.getElementById('content').value; // Contenido del post
+
+            if (!userId) {
+                alert("Please select a user to create a post.");
+                return; // Detener la creación del post si no se seleccionó un usuario
+            }
 
             try {
-                // Obtener el ID del usuario por su nombre de usuario
-                const userResponse = await fetch(`http://127.0.0.1:8000/api/users/?username=${username}`);
-                const users = await userResponse.json();
-
-                if (users.length === 0) {
-                    alert("User not found. Please create the user first.");
-                    return;
-                }
-
-                const userId = users[0].id;
-
                 // Crear la publicación con el ID del usuario
                 const postResponse = await fetch('http://127.0.0.1:8000/api/posts/', {
                     method: 'POST',
@@ -115,7 +135,7 @@
                 posts.forEach(post => {
                     const postElement = document.createElement('div');
                     postElement.innerHTML = `
-                        <p><strong>${post.user.username}</strong>: ${post.content}</p>
+                        <p><strong>${post.username}</strong>: ${post.content}</p>
                         <p><em>${post.created_at}</em></p>
                         <hr>
                     `;
