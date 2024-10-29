@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Social Network Frontend</title>
+</head>
+<body>
+    <h1>Social Network App</h1>
+
+    <!-- Formulario para crear un usuario -->
+    <h2>Create User</h2>
+    <form id="userForm">
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required><br><br>
+        <label for="email">Email:</label>
+        <input type="email" id="email" name="email" required><br><br>
+        <button type="submit">Create User</button>
+    </form>
+
+    <hr>
+
+    <!-- Formulario para crear una nueva publicación -->
+    <h2>Create a Post</h2>
+    <form id="postForm">
+        <label for="postUsername">Username:</label>
+        <input type="text" id="postUsername" name="postUsername" required><br><br>
+        <label for="content">Post Content:</label>
+        <textarea id="content" name="content" required></textarea><br><br>
+        <button type="submit">Create Post</button>
+    </form>
+
+    <hr>
+
+    <!-- Botón y área para mostrar todas las publicaciones -->
+    <h2>All Posts</h2>
+    <button onclick="getPosts()">Load Posts</button>
+    <div id="posts"></div>
+
+    <script>
+        // Función para crear un nuevo usuario al enviar el formulario
+        document.getElementById('userForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const username = document.getElementById('username').value;
+            const email = document.getElementById('email').value;
+
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/users/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, email })
+                });
+
+                if (response.ok) {
+                    alert("User created successfully!");
+                    document.getElementById('userForm').reset();
+                } else {
+                    alert("Error creating user.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        });
+
+        // Función para crear una nueva publicación al enviar el formulario
+        document.getElementById('postForm').addEventListener('submit', async function (event) {
+            event.preventDefault();
+            const username = document.getElementById('postUsername').value;
+            const content = document.getElementById('content').value;
+
+            try {
+                // Obtener el ID del usuario por su nombre de usuario
+                const userResponse = await fetch(`http://127.0.0.1:8000/api/users/?username=${username}`);
+                const users = await userResponse.json();
+
+                if (users.length === 0) {
+                    alert("User not found. Please create the user first.");
+                    return;
+                }
+
+                const userId = users[0].id;
+
+                // Crear la publicación con el ID del usuario
+                const postResponse = await fetch('http://127.0.0.1:8000/api/posts/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ user: userId, content })
+                });
+
+                if (postResponse.ok) {
+                    alert("Post created successfully!");
+                    document.getElementById('postForm').reset();
+                    getPosts();  // Actualizar la lista de publicaciones
+                } else {
+                    alert("Error creating post.");
+                }
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        });
+
+        // Función para obtener y mostrar todas las publicaciones
+        async function getPosts() {
+            try {
+                const response = await fetch('http://127.0.0.1:8000/api/posts/');
+                const posts = await response.json();
+
+                const postsDiv = document.getElementById('posts');
+                postsDiv.innerHTML = "";
+
+                posts.forEach(post => {
+                    const postElement = document.createElement('div');
+                    postElement.innerHTML = `
+                        <p><strong>${post.user.username}</strong>: ${post.content}</p>
+                        <p><em>${post.created_at}</em></p>
+                        <hr>
+                    `;
+                    postsDiv.appendChild(postElement);
+                });
+            } catch (error) {
+                console.error("Error:", error);
+            }
+        }
+    </script>
+</body>
+</html>
